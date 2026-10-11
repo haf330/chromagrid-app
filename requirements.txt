@@ -1,0 +1,6 @@
+# Runtime dependencies; business references are already generated.
+openai>=3.26.0,<4
+gradio==6.29.1
+pypdf
+python-dotenv
+tiktoken==0.14.0
