@@ -1,6 +1,6 @@
 # Chromagrid Assistant
 
-App runtime for the Agentic Systems assignment. This fictional business assistant
+Notebook and app runtime for the Agentic Systems assignment. This fictional business assistant
 provides product guidance and quotes, records feedback, and saves customer enquiries
 only after confirmation of the displayed details. It does not place orders, accept
 payment, notify staff, or guarantee follow-up.
@@ -26,8 +26,25 @@ Open http://127.0.0.1:7862 in your browser. Messages can make paid OpenAI API ca
 The selected model is `gpt-6-luna`; account access and live behavior must be verified.
 The server listens locally. This entry point is not a hosted deployment configuration.
 
+## Run the assignment notebook
+
+From the activated virtual environment:
+
+```bash
+python -m pip install jupyterlab ipykernel
+python -m ipykernel install --user --name chromagrid --display-name "Chromagrid"
+jupyter lab business_agent.ipynb
+```
+
+Select the **Chromagrid** kernel. Run the cells in order. Offline checks and UI
+construction do not require a key or make paid calls. Set `LAUNCH_APP = True` in
+the final code cell to launch the chatbot. Sending messages uses the configured key.
+For Colab, clone or upload this repository, set `PROJECT_ROOT`, install dependencies,
+and configure `OPENAI_API_KEY` in Colab secrets. Colab execution remains unverified.
+
 ## Files
 
+- `business_agent.ipynb`: main assignment notebook with labeled persona/instructions, routing, tools, memory, reflection, offline checks, and UI.
 - `app.py`: loads settings and starts the Gradio application.
 - `chromagrid/`: shared chat, routing, model, memory, tools, consent, and reflection code.
 - `me/about_business.pdf` and `me/business_summary.txt`: required business references.
@@ -39,6 +56,6 @@ locally across restarts, but chat sessions are not restored. The logs and creden
 are excluded from Git. Assignment diagnostics expose routing, tools, usage, and
 reflection results during a chat.
 
-This repository is an app-only snapshot of the parent assignment project. The
-notebook, tests, business authoring sources, generators, previews, and planning files
-remain in that project. Parent-project changes do not automatically update this copy.
+This repository is a submission runtime snapshot of the parent assignment project.
+Tests, business authoring sources, generators, previews, and planning files remain
+in that project. Parent-project changes do not automatically update this copy.
