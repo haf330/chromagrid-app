@@ -87,6 +87,7 @@ def _valid_refs(refs, sources, *, allow_empty=False):
 
 def validate_review(raw, draft, evidence):
     """Validate structure and source IDs; the model judges semantic support."""
+    passages = draft_passages(draft)
     try:
         result = json.loads(raw)
     except (TypeError, ValueError):
@@ -115,7 +116,7 @@ def validate_review(raw, draft, evidence):
                 raise ModelError("unsupported_reflection", f"{location}.evidence_refs must identify supplied evidence items.")
             if key == "findings":
                 omission = item["rule"] in ("mixed_tasks", "lead_offer")
-                if not _valid_refs(item["draft_refs"], draft_passages(draft), allow_empty=omission):
+                if not _valid_refs(item["draft_refs"], passages, allow_empty=omission):
                     raise ModelError("unsupported_reflection", f"{location}.draft_refs must identify affected draft passages.")
                 if not item["draft_excerpt"].strip() and not omission:
                     raise ModelError("unsupported_reflection", f"{location}.draft_excerpt requires a description.")
@@ -146,7 +147,8 @@ class ReplyReviewer:
         evidence["reviewer-policy"] = {"content": REVIEW_INSTRUCTIONS}
         evidence["application-state"] = deepcopy(state)
         evidence.update({f"tool-{index}": deepcopy(item) for index, item in enumerate(trace)})
-        payload["draft_passages"] = draft_passages(draft)
+        passages = draft_passages(draft)
+        payload["draft_passages"] = passages
         payload["evidence_index"] = list(evidence)
         payload["trace_evidence_refs"] = [f"tool-{index}" for index in range(len(trace))]
         payload["application_state_ref"] = "application-state"
@@ -171,7 +173,7 @@ class ReplyReviewer:
             cited = {ref for item in result["findings"] + result["workflow_issues"] for ref in item["evidence_refs"]}
             affected = {ref for item in result["findings"] for ref in item["draft_refs"]}
             record["cited_evidence"] = {ref: deepcopy(evidence[ref]) for ref in sorted(cited)}
-            record["affected_draft_passages"] = {ref: draft_passages(draft)[ref] for ref in sorted(affected)}
+            record["affected_draft_passages"] = {ref: passages[ref] for ref in sorted(affected)}
         except ModelError as exc:
             record["error_code"] = exc.code
             if raw_review is not None:

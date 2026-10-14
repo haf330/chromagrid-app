@@ -1,21 +1,21 @@
 """Allowlisted tool execution for a single application-bound customer turn.
 
-This dispatcher makes no model calls and does not classify intent. A future chat
-loop must decode actual model arguments and bind the current customer message.
+This dispatcher makes no model calls and does not classify intent. The chat loop
+decodes model arguments and binds the current customer message.
 """
 
 from .catalogue import (CALCULATE_QUOTE_SCHEMA, CHOICES, GET_PRODUCT_OPTIONS_SCHEMA,
                         Catalogue, error)
 from .feedback import FeedbackToolExecutor, RECORD_FEEDBACK_SCHEMA
 from .leads import (LeadDraftToolExecutor, LeadSession, LeadToolExecutor,
-                    RECORD_CUSTOMER_INTEREST_SCHEMA, REQUEST_LEAD_CONFIRMATION_SCHEMA,
+                    RECORD_CUSTOMER_INTEREST_SCHEMA,
                     UPDATE_LEAD_DRAFT_SCHEMA)
 from .storage import JsonlStore
 
 
 TOOL_SCHEMAS = [GET_PRODUCT_OPTIONS_SCHEMA, CALCULATE_QUOTE_SCHEMA,
                 RECORD_FEEDBACK_SCHEMA, RECORD_CUSTOMER_INTEREST_SCHEMA,
-                REQUEST_LEAD_CONFIRMATION_SCHEMA, UPDATE_LEAD_DRAFT_SCHEMA]
+                UPDATE_LEAD_DRAFT_SCHEMA]
 
 
 class BusinessToolExecutor:
@@ -40,8 +40,6 @@ class BusinessToolExecutor:
             return error("tool_not_enabled", "This tool is not enabled for the current request.")
         if name == "record_customer_interest":
             return self.leads.request_customer_interest(arguments)
-        if name == "request_lead_confirmation":
-            return self.leads.execute_tool(name, arguments)
         if name == "update_lead_draft":
             return self.draft.execute(arguments)
         if name == "record_feedback":

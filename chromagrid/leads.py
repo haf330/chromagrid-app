@@ -1,8 +1,7 @@
 """Application-owned lead state and a guarded model-tool executor.
 
-The future chat loop must register only actual customer messages, collect fields
-with source-message IDs, display the fixed confirmation panel, and pass the actual
-customer click to confirm_choice(). confirm() remains a text-only fallback.
+The chat loop registers only actual customer messages, collects fields with
+source-message IDs, and passes the displayed panel's actual click to confirm_choice().
 A model cannot set consent through tool arguments.
 The application must serialize turns within a chat; different chats use different
 LeadSession instances. This module does not classify buying interest or call an API.
@@ -67,7 +66,6 @@ class SaveRequest:
     request_id: str
     details: LeadDetails
     prompt: str
-    after_message: int
     session_id: str
 
 
@@ -75,7 +73,6 @@ class SaveRequest:
 class _Agreement:
     request: SaveRequest
     customer_event_id: str
-    source: str = "message"
 
     @property
     def event_id(self) -> str:
@@ -100,7 +97,6 @@ class LeadSession:
         self.session_id = str(uuid4())
         self._messages: dict[str, tuple[int, str]] = {}
         self._draft: dict[str, str] = {}
-        self._sources: dict[str, tuple[str, ...]] = {}
         self._request: SaveRequest | None = None
         self._agreement: _Agreement | None = None
         self._choice: _ChoiceEvent | None = None
@@ -173,7 +169,7 @@ class LeadSession:
             self._agreement = None
             self._choice = None
             self._saved = False
-        draft, sources = dict(self._draft), dict(self._sources)
+        draft = dict(self._draft)
         if name is not None:
             name = _text(name, "name", 120)
             # A mailbox's local part is not evidence of a customer-supplied name.
@@ -181,22 +177,22 @@ class LeadSession:
             if re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)",
                          source_text, flags=re.IGNORECASE) is None:
                 raise LeadValidationError("The name was not supplied in the cited message.")
-            draft["name"], sources["name"] = name, (name_source,)
+            draft["name"] = name
         if email is not None:
             email = _email(email)
             supplied = {match.group().casefold()
                         for match in _EMAILS.finditer(self._customer_text(email_source))}
             if email.casefold() not in supplied:
                 raise LeadValidationError("The email was not supplied in the cited message.")
-            draft["email"], sources["email"] = email, (email_source,)
+            draft["email"] = email
         if message is not None:
             message = _text(message, "message", 1500)
             if not isinstance(interest_sources, tuple) or not interest_sources:
                 raise LeadValidationError("Notes require source customer messages.")
             for source in interest_sources:
                 self._customer_text(source)
-            draft["message"], sources["message"] = message, interest_sources
-        self._draft, self._sources = draft, sources
+            draft["message"] = message
+        self._draft = draft
 
     def _details(self) -> LeadDetails:
         return LeadDetails.validated(name=self._draft.get("name"),
@@ -214,7 +210,7 @@ class LeadSession:
                               "interest_notes": details.message}, ensure_ascii=False, indent=2)
         prompt = (CONFIRMATION_QUESTION + "\n" + display + "\n" + CONFIRMATION_NOTICE
                   + f" Choose {SAVE_LABEL} or {DECLINE_LABEL}.")
-        self._request = SaveRequest(str(uuid4()), details, prompt, len(self._messages), self.session_id)
+        self._request = SaveRequest(str(uuid4()), details, prompt, self.session_id)
         self._agreement = None
         self._choice = None
         self._saved = False
@@ -260,7 +256,7 @@ class LeadSession:
         event = _ChoiceEvent(request, str(uuid4()), choice)
         self._choice = event
         if choice:
-            self._agreement = _Agreement(request, event.event_id, source="button")
+            self._agreement = _Agreement(request, event.event_id)
         else:
             self.collection_declined = True
             self._declined_after_message = len(self._messages)
@@ -268,33 +264,6 @@ class LeadSession:
             self._request = None
         return {"ok": True, "status": "confirmed" if choice else "declined",
                 "event_id": event.event_id, "duplicate": False}
-
-    def confirm(self, *, request_id: str, customer_message_id: str) -> str:
-        """Accept only an explicit YES/NO after this pending save request.
-
-        Ambiguous text requires clarification. A later NO cancels agreement;
-        reprocessing a YES for the same request retains its original event ID.
-        This records permission only; an application caller must then invoke the guarded saver.
-        """
-        request = self._request
-        text = self._customer_text(customer_message_id)
-        if request is None or request.request_id != request_id:
-            raise ConsentError("There is no matching save request in this chat.")
-        if self._messages[customer_message_id][0] <= request.after_message:
-            raise ConsentError("Confirmation must follow the save request.")
-        answer = text.strip().casefold()
-        if answer == "no":
-            self.collection_declined = True
-            self._declined_after_message = self._messages[customer_message_id][0]
-            self._agreement = None
-            self._choice = None
-            self._request = None
-            return "declined"
-        if answer != "yes":
-            return "clarification_required"
-        if self._agreement is None:
-            self._agreement = _Agreement(request, customer_message_id)
-        return "confirmed"
 
     def reopen_collection(self, customer_message_id: str) -> None:
         """Allow a new offer after refusal only on an explicit customer request."""
@@ -309,6 +278,17 @@ class LeadSession:
         self._agreement = None
         self._choice = None
         self._saved = False
+
+
+def handle_confirmation_choice(session: LeadSession, *, session_id: str,
+                               request_id: str, choice: bool) -> dict:
+    """Validate an actual panel click without saving or calling the model."""
+    try:
+        return session.confirm_choice(session_id=session_id, request_id=request_id, choice=choice)
+    except LeadValidationError as exc:
+        return _error("invalid_choice", str(exc))
+    except ConsentError as exc:
+        return _error("inactive_confirmation", str(exc))
 
 
 UPDATE_LEAD_DRAFT_SCHEMA = {
@@ -399,19 +379,6 @@ RECORD_CUSTOMER_INTEREST_SCHEMA = {
 }
 
 
-REQUEST_LEAD_CONFIRMATION_SCHEMA = {
-    "type": "function",
-    "function": {
-        "name": "request_lead_confirmation",
-        "description": "Show fixed save/decline buttons for the collected lead details. "
-                       "Wait for the customer's selection. Does not grant consent or save a lead.",
-        "strict": True,
-        "parameters": {"type": "object", "properties": {}, "required": [],
-                       "additionalProperties": False},
-    },
-}
-
-
 def _error(code: str, message: str) -> dict:
     return {"ok": False, "error": {"code": code, "message": message}}
 
@@ -422,23 +389,7 @@ class LeadToolExecutor:
     def __init__(self, session: LeadSession, store: JsonlStore):
         self.session, self.store = session, store
 
-    def execute(self, arguments: object) -> dict:
-        """Validate a decoded tool-arguments object, including unknown fields."""
-        if not isinstance(arguments, dict) or set(arguments) != {"email", "name", "message"}:
-            return _error("invalid_arguments", "Supply only email, name, and message.")
-        return self.record_customer_interest(**arguments)
-
-    def execute_tool(self, name: str, arguments: object) -> dict:
-        """Dispatch only the two named lead tools; never expose the click callback."""
-        if name == "record_customer_interest":
-            return self.execute(arguments)
-        if name == "request_lead_confirmation":
-            if not isinstance(arguments, dict) or arguments:
-                return _error("invalid_arguments", "The confirmation request takes no arguments.")
-            return self.request_lead_confirmation()
-        return _error("unknown_tool", "This tool is not available.")
-
-    def request_lead_confirmation(self) -> dict:
+    def _request_confirmation(self) -> dict:
         if self.session.confirmation_status in {"confirmed", "recorded"}:
             # Repeated model requests cannot reopen a decided panel.
             return {"ok": True, "status": self.session.confirmation_status}
@@ -472,7 +423,7 @@ class LeadToolExecutor:
             return _error("invalid_arguments", str(exc))
         if {field: getattr(details, field) for field in ("name", "email", "message")} != self.session.draft_snapshot():
             return _error("draft_mismatch", "Use exactly the customer-supported current draft before requesting approval.")
-        return self.request_lead_confirmation()
+        return self._request_confirmation()
 
     def record_confirmed_interest(self) -> dict:
         """Application-only save: take contents from the actual approved snapshot."""
@@ -502,7 +453,7 @@ class LeadToolExecutor:
                 payload={"kind": "customer_interest", "name": details.name,
                          "email": details.email, "message": details.message,
                          "confirmation_event_id": agreement.customer_event_id,
-                         "confirmation_source": agreement.source},
+                         "confirmation_source": "button"},
             )
         except EventConflictError:
             return _error("event_conflict", "This event already exists with different details.")

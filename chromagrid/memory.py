@@ -190,7 +190,7 @@ class ConversationMemory:
         """Budget the whole request, leaving the current exchange untouched.
 
         state_context comes from application state, never from a model summary.
-        The future API caller must resolve pending_tool_call_ids before generation.
+        The API caller must resolve pending_tool_call_ids before generation.
         """
         if not isinstance(state_context, str):
             raise MemoryError("Application context must be text.")

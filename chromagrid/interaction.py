@@ -1,7 +1,7 @@
 """Application policy for message entry while a save choice is pending.
 
-All future chat submission handlers must use accept_customer_message. The lower
-level evidence API remains available to text-only clients and trusted setup code.
+Chat submission handlers use accept_customer_message before storing history.
+The lower-level evidence API is also used by isolated state tests.
 """
 
 from .leads import ConsentError, LeadSession

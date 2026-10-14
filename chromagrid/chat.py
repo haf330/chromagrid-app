@@ -9,9 +9,8 @@ from dataclasses import dataclass
 import json
 from threading import RLock
 
-from .confirmation_ui import handle_confirmation_choice
 from .interaction import accept_customer_message
-from .leads import ConsentError, LeadSession, LeadToolExecutor
+from .leads import ConsentError, LeadSession, LeadToolExecutor, handle_confirmation_choice
 from .memory import MemoryError
 from .model import ModelError
 from .prompts import fixed_messages
