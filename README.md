@@ -57,7 +57,7 @@ Select the **Chromagrid** kernel. Run the cells in order. Offline checks and UI
 construction do not require a key or make paid calls. Set `LAUNCH_APP = True` in
 the final code cell to launch the chatbot. Sending messages uses the configured key.
 For Colab, clone or upload this repository, set `PROJECT_ROOT`, install dependencies,
-and configure `OPENAI_API_KEY` in Colab secrets. Colab execution remains unverified.
+and configure `OPENAI_API_KEY` in Colab secrets.
 
 ## Files
 
@@ -72,36 +72,3 @@ The app creates files under `logs/` when records are written. These files persis
 locally across restarts, but chat sessions are not restored. The logs and credentials
 are excluded from Git. Assignment diagnostics expose routing, tools, usage, and
 reflection results during a chat.
-
-This repository is a submission runtime snapshot of the parent assignment project.
-Tests, business authoring sources, generators, previews, and planning files remain
-in that project. Parent-project changes do not automatically update this copy.
-
-## Hugging Face Spaces deployment
-
-1. Create a Space under your account, choose **Gradio**, and choose available CPU
-   hardware. This app calls the OpenAI API and does not require a GPU. Check account
-   eligibility and pricing before creating compute resources.
-2. Upload the tracked repository files, preserving the `chromagrid/` and `me/`
-   directories. Upload this README too: its YAML header selects Gradio 6.29.1,
-   Python 3.12, and `app.py`. Do not upload `.env`, `.git/`, virtual environments,
-   caches, or logs. The notebook is a submission deliverable; Spaces runs `app.py`.
-3. In the Space's **Settings**, add a **Secret** named `OPENAI_API_KEY`. Paste your
-   own key there. It is exposed to the server as an environment variable.
-4. Wait for the build and inspect build/runtime logs if it fails. Once running,
-   verify a product question, a quote, and a fictitious confirmation flow. Inspect
-   Assignment diagnostics for actual routing, tool and reflection results.
-5. Add the Space URL to your assignment submission and demonstration video.
-
-A public Space lets other people use the app; model requests use your OpenAI account.
-Pause the Space from Settings when you are finished demonstrating it. This app has
-no automatic spending guard. The local USD 5 validation agreement is monitored
-manually and is not a deployed application setting.
-
-The default Space filesystem is ephemeral. JSONL records are demo logs and may be
-lost when the container is rebuilt or replaced. Export any required demonstration
-evidence before that happens; hosting does not add durable storage or chat recovery.
-
-Official setup: https://huggingface.co/docs/hub/spaces-sdks-gradio
-Secrets and account eligibility: https://huggingface.co/docs/hub/spaces-overview
-Configuration: https://huggingface.co/docs/hub/spaces-config-reference
