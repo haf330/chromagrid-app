@@ -17,6 +17,10 @@ provides product guidance and quotes, records feedback, and saves customer enqui
 only after confirmation of the displayed details. It does not place orders, accept
 payment, notify staff, or guarantee follow-up.
 
+## Demonstration video
+
+[Watch the chatbot demonstration](Chromagrid_demo.mp4).
+
 ## Setup and run
 
 Use Python 3.11 or later. Run these commands from this repository:
